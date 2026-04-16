@@ -43,7 +43,7 @@ def format_inr(x):
         return "₹0"
 
 # -------------------------
-# PDF FUNCTION (DYNAMIC)
+# PDF FUNCTION
 # -------------------------
 def generate_pdf_bytes(client_name, plan, renewal, offer):
 
@@ -51,7 +51,6 @@ def generate_pdf_bytes(client_name, plan, renewal, offer):
     doc = SimpleDocTemplate(buffer)
     styles = getSampleStyleSheet()
 
-    # PLAN LOGIC
     price = renewal if plan == "1 Year Plan" else offer
     price = int(price) if price else 0
 
@@ -59,10 +58,8 @@ def generate_pdf_bytes(client_name, plan, renewal, offer):
 
     story.append(Paragraph("<b>NeuSource Systems</b>", styles['Title']))
     story.append(Spacer(1, 15))
-
     story.append(Paragraph("Dear Sir,", styles['Normal']))
     story.append(Spacer(1, 10))
-
     story.append(Paragraph("Hope you are doing well.", styles['Normal']))
     story.append(Spacer(1, 10))
 
@@ -76,31 +73,21 @@ def generate_pdf_bytes(client_name, plan, renewal, offer):
     story.append(Spacer(1, 10))
 
     story.append(Paragraph(
-        "• Preparation of Balance Sheet & P&L<br/>"
-        "• Audit Report & Director Report<br/>"
-        "• ROC Filings (AOC-4, MGT-7)<br/>"
-        "• Income Tax Return Filing<br/>"
+        "• Balance Sheet & P&L<br/>"
+        "• ROC Filings<br/>"
+        "• ITR Filing<br/>"
         "• DIN KYC<br/>"
-        "• Tax Audit Compliance",
+        "• Tax Audit",
         styles['Normal']
     ))
+
     story.append(Spacer(1, 15))
 
     story.append(Paragraph("<b>Fee Structure:</b>", styles['Heading3']))
     story.append(Spacer(1, 10))
 
     story.append(Paragraph(f"<b>{plan}</b>", styles['Normal']))
-    story.append(Paragraph(f"Total Payable: ₹{price:,} (Inclusive of GST)", styles['Normal']))
-
-    if plan == "2+1 Offer":
-        story.append(Paragraph("<b>Includes 1 Year Additional Free</b>", styles['Normal']))
-
-    story.append(Spacer(1, 15))
-
-    story.append(Paragraph(
-        "We assure you of timely compliance and full support.",
-        styles['Normal']
-    ))
+    story.append(Paragraph(f"Total Payable: ₹{price:,}", styles['Normal']))
 
     doc.build(story)
     buffer.seek(0)
@@ -125,34 +112,56 @@ st.title("📊 Client Renewal Dashboard")
 
 client_code = st.text_input("Enter Client Code")
 
-if st.button("Fetch Client"):
+# 🔥 IMPORTANT: remove button dependency
+if client_code:
 
     data = df[df["ClientCode"].astype(str) == client_code]
 
     if data.empty:
         st.error("Client not found ❌")
     else:
-        row = data.iloc[0]
+
+        # -------------------------
+        # COMPANY DROPDOWN (FIXED)
+        # -------------------------
+        if len(data) > 1:
+            selected_company = st.selectbox(
+                "Select Company",
+                data["FileName"].unique()
+            )
+            row = data[data["FileName"] == selected_company].iloc[0]
+        else:
+            row = data.iloc[0]
+
         company = row.get("FileName", "Client")
 
         st.success(company)
 
-        # Overview
+        # -------------------------
+        # OVERVIEW
+        # -------------------------
         c1, c2, c3, c4, c5 = st.columns(5)
+
         c1.markdown(card("Client Code", row['ClientCode']), unsafe_allow_html=True)
         c2.markdown(card("Company", company), unsafe_allow_html=True)
         c3.markdown(card("Entity", row['Co Type']), unsafe_allow_html=True)
         c4.markdown(card("Turnover 23-24", format_inr(row.get('Turn over 23-24',0))), unsafe_allow_html=True)
         c5.markdown(card("Turnover 24-25", format_inr(row.get('Turn over 24-25',0))), unsafe_allow_html=True)
 
-        # Fees
+        # -------------------------
+        # FEE SUMMARY
+        # -------------------------
         st.subheader("💰 Fee Summary")
+
         c1, c2, c3 = st.columns(3)
+
         c1.markdown(card("FY 23-24", format_inr(row.get("Fee 23-24",0))), unsafe_allow_html=True)
         c2.markdown(card("FY 24-25", format_inr(row.get("Fee 24-25",0))), unsafe_allow_html=True)
         c3.markdown(card("Current Total", format_inr(row.get("Total",0))), unsafe_allow_html=True)
 
-        # Renewal
+        # -------------------------
+        # RENEWAL + TAX AUDIT FIX
+        # -------------------------
         renewal = 0
         offer = 0
 
@@ -162,9 +171,11 @@ if st.button("Fetch Client"):
             if "offer" in col.lower():
                 offer = row[col]
 
+        tax_audit_2526 = row.get("Tax Audit 25-26", 0)
+
         st.subheader("🚀 Renewal Pricing")
 
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
 
         c1.markdown(f"""
         <div class="card primary">
@@ -180,8 +191,16 @@ if st.button("Fetch Client"):
         </div>
         """, unsafe_allow_html=True)
 
+        # 🔥 NEW (Tax Audit in renewal section)
+        c3.markdown(f"""
+<div class="card" style="background:#f59e0b;color:white;">
+    <div class="label" style="color:white;">Tax Audit 25-26</div>
+    <div class="value">{format_inr(tax_audit_2526)}</div>
+</div>
+""", unsafe_allow_html=True)
+
         # -------------------------
-        # PDF DOWNLOAD BUTTONS (FIXED)
+        # PDF
         # -------------------------
         st.subheader("📄 Download Proposal")
 
@@ -189,18 +208,8 @@ if st.button("Fetch Client"):
 
         with col1:
             pdf1 = generate_pdf_bytes(company, "1 Year Plan", renewal, offer)
-            st.download_button(
-                label="⬇️ Download 1 Year Proposal",
-                data=pdf1,
-                file_name="proposal_1_year.pdf",
-                mime="application/pdf"
-            )
+            st.download_button("⬇️ 1 Year Proposal", pdf1, "proposal_1_year.pdf")
 
         with col2:
             pdf2 = generate_pdf_bytes(company, "2+1 Offer", renewal, offer)
-            st.download_button(
-                label="⬇️ Download 2+1 Proposal",
-                data=pdf2,
-                file_name="proposal_2plus1.pdf",
-                mime="application/pdf"
-            )
+            st.download_button("⬇️ 2+1 Proposal", pdf2, "proposal_2plus1.pdf")
