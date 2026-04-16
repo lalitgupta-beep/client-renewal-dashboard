@@ -45,55 +45,214 @@ def format_inr(x):
 # -------------------------
 # PDF FUNCTION
 # -------------------------
-def generate_pdf_bytes(client_name, plan, renewal, offer):
+from io import BytesIO
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from datetime import datetime
+import pandas as pd
+
+def safe_int(val):
+    if pd.isna(val):
+        return 0
+    try:
+        return int(val)
+    except:
+        return 0
+
+def gst_breakup(amount):
+    base = int(round(amount / 1.18))
+    gst = amount - base
+    return base, gst
+
+
+def generate_pdf_bytes(client_name, entity_type, plan, renewal, offer, tax_audit):
 
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer)
+
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                            rightMargin=30, leftMargin=30,
+                            topMargin=40, bottomMargin=30)
+
     styles = getSampleStyleSheet()
 
-    price = renewal if plan == "1 Year Plan" else offer
-    price = int(price) if price else 0
+    title_style = ParagraphStyle(
+        'title', parent=styles['Title'],
+        fontSize=14, textColor=colors.white, alignment=1
+    )
+
+    heading_style = ParagraphStyle(
+        'heading', parent=styles['Heading3'],
+        fontSize=12, textColor=colors.HexColor("#111827"), spaceAfter=6
+    )
+
+    normal_style = ParagraphStyle(
+        'normal', parent=styles['Normal'],
+        fontSize=10, leading=14
+    )
+
+    watermark_style = ParagraphStyle(
+        'watermark',
+        parent=styles['Normal'],
+        fontSize=40,
+        textColor=colors.HexColor("#e5e7eb"),
+        alignment=1
+    )
+
+    # SAFE VALUES
+    renewal = safe_int(renewal)
+    offer = safe_int(offer)
+    tax_audit = safe_int(tax_audit)
+
+    # GST
+    ren_base, ren_gst = gst_breakup(renewal)
+    off_base, off_gst = gst_breakup(offer)
+    tax_base, tax_gst = gst_breakup(tax_audit)
+
+    one_year_total = renewal + tax_audit
+    total_price = one_year_total if plan == "1 Year Plan" else offer
 
     story = []
 
-    story.append(Paragraph("<b>NeuSource Systems</b>", styles['Title']))
-    story.append(Spacer(1, 15))
-    story.append(Paragraph("Dear Sir,", styles['Normal']))
+    # 🔥 WATERMARK (light)
+    story.append(Paragraph("Neusource", watermark_style))
+    story.append(Spacer(1, -30))
+
+    # HEADER
+    header = Table([[Paragraph("Neusource Startup Minds India Limited", title_style)]], colWidths=[500])
+    header.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#1d4ed8")),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('PADDING', (0, 0), (-1, -1), 8),
+    ]))
+
+    story.append(header)
+    story.append(Spacer(1, 8))
+
+    # LOGO
+    try:
+        story.append(Image("logo.png", width=100, height=30))
+        story.append(Spacer(1, 6))
+    except:
+        pass
+
+    # DATE
+    story.append(Paragraph(f"Date: {datetime.today().strftime('%d %B %Y')}", normal_style))
     story.append(Spacer(1, 10))
-    story.append(Paragraph("Hope you are doing well.", styles['Normal']))
-    story.append(Spacer(1, 10))
+
+    # INTRO
+    story.append(Paragraph("Dear Sir,", normal_style))
+    story.append(Paragraph("Hope you are doing well.", normal_style))
+    story.append(Spacer(1, 5))
 
     story.append(Paragraph(
-        "As discussed, please find below the proposal for annual statutory compliances for the financial year 2024–2025.",
-        styles['Normal']
-    ))
-    story.append(Spacer(1, 15))
-
-    story.append(Paragraph("<b>Scope of Work:</b>", styles['Heading3']))
-    story.append(Spacer(1, 10))
-
-    story.append(Paragraph(
-        "• Balance Sheet & P&L<br/>"
-        "• ROC Filings<br/>"
-        "• ITR Filing<br/>"
-        "• DIN KYC<br/>"
-        "• Tax Audit",
-        styles['Normal']
+        "As discussed, please find below the proposal for annual statutory compliances for FY 2025–2026.",
+        normal_style
     ))
 
-    story.append(Spacer(1, 15))
-
-    story.append(Paragraph("<b>Fee Structure:</b>", styles['Heading3']))
     story.append(Spacer(1, 10))
 
-    story.append(Paragraph(f"<b>{plan}</b>", styles['Normal']))
-    story.append(Paragraph(f"Total Payable: ₹{price:,}", styles['Normal']))
+    # CLIENT
+    story.append(Paragraph(f"<b>Client Name:</b> {client_name}", normal_style))
+    story.append(Paragraph(f"<b>Entity Type:</b> {entity_type}", normal_style))
+
+    story.append(Spacer(1, 10))
+
+    # SCOPE
+    story.append(Paragraph("Scope of Work", heading_style))
+
+    scope_points = [
+        "Preparation of Balance Sheet & Profit and Loss Account",
+        "Preparation of Audit Report, Director's Report, Extract of Annual Return & Financial Statements",
+        "Preparation & filing of Form DPT-3",
+        "Preparation & Filing of Form AOC-04",
+        "Preparation & Filing of Form MGT-07",
+        "Auditor's DSC usage in AOC-04",
+        "Preparation of Minutes of Board Meeting",
+        "Preparation of Minutes of AGM",
+        "Income Tax Return filing (Company)",
+        "DIN KYC of Directors",
+        "ITR of Directors (if opted)",
+        "Tax Audit compliance (if applicable & opted)"
+    ]
+
+    for p in scope_points:
+        story.append(Paragraph(f"✔ {p}", normal_style))
+
+    story.append(Spacer(1, 10))
+
+    # 🔥 PRICING TABLE
+    story.append(Paragraph("Fee Structure", heading_style))
+
+    table_data = [
+        ["Particulars", "Base", "GST", "Total"],
+        ["1 Year Plan", f"{ren_base:,}", f"{ren_gst:,}", f"{renewal:,}"],
+        ["Tax Audit", f"{tax_base:,}", f"{tax_gst:,}", f"{tax_audit:,}"],
+        ["★ 2+1 Offer (Recommended)", f"{off_base:,}", f"{off_gst:,}", f"{offer:,}"],
+        ["Total Payable", "", "", f"{total_price:,}"]
+    ]
+
+    table = Table(table_data, colWidths=[180, 100, 100, 120])
+
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1d4ed8")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+
+        # Recommended highlight
+        ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor("#bbf7d0")),
+        ('FONTNAME', (0, 3), (-1, 3), 'Helvetica-Bold'),
+
+        # Total
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor("#e0f2fe")),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+    ]))
+
+    story.append(table)
+
+    story.append(Spacer(1, 12))
+
+    # 🔥 COMPARISON
+    story.append(Paragraph("Cost Comparison", heading_style))
+
+    three_year_cost = one_year_total * 3
+    per_year = int(offer / 3)
+    savings = three_year_cost - offer
+
+    comp_data = [
+        ["Particulars", "Amount"],
+        ["1 Year Total", f"{one_year_total:,}"],
+        ["3 Year Cost (1 Year Plan)", f"{three_year_cost:,}"],
+        ["2+1 Offer", f"{offer:,}"],
+        ["Per Year Cost (2+1)", f"{per_year:,}"],
+        ["🔥 You Save", f"{savings:,}"]
+    ]
+
+    comp_table = Table(comp_data, colWidths=[300, 150])
+
+    comp_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.black),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor("#bbf7d0")),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+    ]))
+
+    story.append(comp_table)
+
+    story.append(Spacer(1, 10))
+
+    # CLOSING
+    story.append(Paragraph("We assure you of timely and accurate compliance support.", normal_style))
+    story.append(Paragraph("<b>Thank you for being with us.</b>", normal_style))
 
     doc.build(story)
     buffer.seek(0)
 
     return buffer
-
 # -------------------------
 # CARD
 # -------------------------
@@ -207,9 +366,23 @@ if client_code:
         col1, col2 = st.columns(2)
 
         with col1:
-            pdf1 = generate_pdf_bytes(company, "1 Year Plan", renewal, offer)
+            pdf1 = generate_pdf_bytes(
+    company,
+    row.get("Co Type", ""),
+    "1 Year Plan",
+    renewal,
+    offer,
+    tax_audit_2526
+)
             st.download_button("⬇️ 1 Year Proposal", pdf1, "proposal_1_year.pdf")
 
         with col2:
-            pdf2 = generate_pdf_bytes(company, "2+1 Offer", renewal, offer)
+            pdf2 = generate_pdf_bytes(
+    company,
+    row.get("Co Type", ""),
+    "2+1 Offer",
+    renewal,
+    offer,
+    tax_audit_2526
+)	
             st.download_button("⬇️ 2+1 Proposal", pdf2, "proposal_2plus1.pdf")
