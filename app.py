@@ -72,30 +72,32 @@ def generate_pdf_bytes(client_name, entity_type, plan, renewal, offer, tax_audit
     buffer = BytesIO()
 
     doc = SimpleDocTemplate(buffer, pagesize=A4,
-                            rightMargin=30, leftMargin=30,
-                            topMargin=40, bottomMargin=30)
+                            rightMargin=36, leftMargin=36,
+                            topMargin=20, bottomMargin=18)
 
     styles = getSampleStyleSheet()
 
     title_style = ParagraphStyle(
         'title', parent=styles['Title'],
-        fontSize=14, textColor=colors.white, alignment=1
+        fontSize=14, textColor=colors.white, alignment=1,
+        leading=16
     )
 
     heading_style = ParagraphStyle(
         'heading', parent=styles['Heading3'],
-        fontSize=12, textColor=colors.HexColor("#111827"), spaceAfter=6
+        fontSize=10.5, textColor=colors.HexColor("#111827"), spaceAfter=2,
+        spaceBefore=1, leading=12.5
     )
 
     normal_style = ParagraphStyle(
         'normal', parent=styles['Normal'],
-        fontSize=10, leading=14
+        fontSize=9.2, leading=12
     )
 
     watermark_style = ParagraphStyle(
         'watermark',
         parent=styles['Normal'],
-        fontSize=40,
+        fontSize=28,
         textColor=colors.HexColor("#e5e7eb"),
         alignment=1
     )
@@ -117,7 +119,7 @@ def generate_pdf_bytes(client_name, entity_type, plan, renewal, offer, tax_audit
 
     # 🔥 WATERMARK (light)
     story.append(Paragraph("Neusource", watermark_style))
-    story.append(Spacer(1, -30))
+    story.append(Spacer(1, -22))
 
     # HEADER
     header = Table([[Paragraph("Neusource Startup Minds India Limited", title_style)]], colWidths=[500])
@@ -125,67 +127,124 @@ def generate_pdf_bytes(client_name, entity_type, plan, renewal, offer, tax_audit
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#1d4ed8")),
         ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('PADDING', (0, 0), (-1, -1), 8),
+        ('PADDING', (0, 0), (-1, -1), 6),
     ]))
 
     story.append(header)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 5))
 
     # LOGO
     try:
-        story.append(Image("logo.png", width=100, height=30))
-        story.append(Spacer(1, 6))
+        story.append(Image("logo.png", width=75, height=22))
+        story.append(Spacer(1, 4))
     except:
         pass
 
     # DATE
     story.append(Paragraph(f"Date: {datetime.today().strftime('%d %B %Y')}", normal_style))
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 5))
 
     # INTRO
     story.append(Paragraph("Dear Sir,", normal_style))
     story.append(Paragraph("Hope you are doing well.", normal_style))
-    story.append(Spacer(1, 5))
+    story.append(Spacer(1, 2))
 
     story.append(Paragraph(
         "As discussed, please find below the proposal for annual statutory compliances for FY 2025–2026.",
         normal_style
     ))
 
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 6))
 
-    # CLIENT
-    story.append(Paragraph(f"<b>Client Name:</b> {client_name}", normal_style))
-    story.append(Paragraph(f"<b>Entity Type:</b> {entity_type}", normal_style))
+    # -------------------------
+    # BLOCK HELPER (card-style section with colored title bar)
+    # -------------------------
+    FULL_WIDTH = 523
 
-    story.append(Spacer(1, 10))
+    box_header_style = ParagraphStyle(
+        'box_header', parent=styles['Heading3'],
+        fontSize=11, textColor=colors.white, leading=13,
+        spaceAfter=0, spaceBefore=0
+    )
 
-    # SCOPE
-    story.append(Paragraph("Scope of Work", heading_style))
+    def make_box(title, content_flowables, width=FULL_WIDTH, bar_color="#1d4ed8"):
+        box_data = [[Paragraph(title, box_header_style)], [content_flowables]]
+        box = Table(box_data, colWidths=[width])
+        box.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(bar_color)),
+            ('TOPPADDING', (0, 0), (-1, 0), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
+            ('LEFTPADDING', (0, 0), (-1, 0), 10),
+            ('TOPPADDING', (0, 1), (-1, 1), 6),
+            ('BOTTOMPADDING', (0, 1), (-1, 1), 6),
+            ('LEFTPADDING', (0, 1), (-1, 1), 10),
+            ('RIGHTPADDING', (0, 1), (-1, 1), 10),
+            ('BACKGROUND', (0, 1), (-1, 1), colors.white),
+            ('BOX', (0, 0), (-1, -1), 0.75, colors.HexColor(bar_color)),
+            ('LINEBELOW', (0, 0), (-1, 0), 0.75, colors.HexColor(bar_color)),
+        ]))
+        return box
 
+    # -------------------------
+    # BLOCK 1: CLIENT DETAILS
+    # -------------------------
+    client_content = [
+        Paragraph(f"<b>Client Name:</b> {client_name}", normal_style),
+        Spacer(1, 3),
+        Paragraph(f"<b>Entity Type:</b> {entity_type}", normal_style),
+    ]
+    story.append(make_box("Client Details", client_content))
+    story.append(Spacer(1, 6))
+
+    # -------------------------
+    # BLOCK 2: SCOPE OF WORK
+    # -------------------------
     scope_points = [
-        "Preparation of Balance Sheet & Profit and Loss Account",
-        "Preparation of Audit Report, Director's Report, Extract of Annual Return & Financial Statements",
-        "Preparation & filing of Form DPT-3",
-        "Preparation & Filing of Form AOC-04",
-        "Preparation & Filing of Form MGT-07",
-        "Auditor's DSC usage in AOC-04",
-        "Preparation of Minutes of Board Meeting",
-        "Preparation of Minutes of AGM",
-        "Income Tax Return filing (Company)",
-        "DIN KYC of Directors",
-        "ITR of Directors (if opted)",
-        "Tax Audit compliance (if applicable & opted)"
+
+        "A. Statutory Audit & Financials",
+
+        "Review, Finalization & Statutory Audit of Balance Sheet, Profit & Loss Account and Audit Report (based on books/records shared by the client)",
+
+        "B. ROC Annual Filings",
+
+        "Filing of Form AOC-4 – Financial Statements",
+
+        "Filing of Form MGT-7 / MGT-7A – Annual Return (as applicable)",
+
+        "Filing of Form ADT-1 – Appointment / Re-appointment of Statutory Auditor (if applicable)",
+
+        "Filing of Form DPT-3 – Return of Deposits (if applicable)",
+
+        "C. Income Tax Compliances",
+
+        "Income Tax Return Filing – Company",
+
+        "Income Tax Return Filing – Directors (If Opted)",
+
+        "Tax Audit (if applicable & charged in this proposal)",
+
+        "D. Director & Other Regulatory Compliances",
+
+        "DIR-3 KYC of All Directors"
     ]
 
-    for p in scope_points:
-        story.append(Paragraph(f"✔ {p}", normal_style))
+    scope_content = []
+    for i, p in enumerate(scope_points):
+        if p.startswith(("A.", "B.", "C.", "D.")):
+            if i != 0:
+                scope_content.append(Spacer(1, 2))
+            scope_content.append(
+                Paragraph(f"<b><font color='#1d4ed8'>{p}</font></b>", heading_style)
+            )
+        else:
+            scope_content.append(Paragraph(f"• {p}", normal_style))
 
-    story.append(Spacer(1, 10))
+    story.append(make_box("Scope of Work", scope_content))
+    story.append(Spacer(1, 6))
 
-    # 🔥 PRICING TABLE
-    story.append(Paragraph("Fee Structure", heading_style))
-
+    # -------------------------
+    # BLOCK 3: FEE STRUCTURE
+    # -------------------------
     table_data = [
         ["Particulars", "Base", "GST", "Total"],
         ["1 Year Plan", f"{ren_base:,}", f"{ren_gst:,}", f"{renewal:,}"],
@@ -194,12 +253,15 @@ def generate_pdf_bytes(client_name, entity_type, plan, renewal, offer, tax_audit
         ["Total Payable", "", "", f"{total_price:,}"]
     ]
 
-    table = Table(table_data, colWidths=[180, 100, 100, 120])
+    table = Table(table_data, colWidths=[173, 94, 94, 112])
 
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1d4ed8")),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTSIZE', (0, 0), (-1, -1), 9.5),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
 
         # Recommended highlight
         ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor("#bbf7d0")),
@@ -210,13 +272,12 @@ def generate_pdf_bytes(client_name, entity_type, plan, renewal, offer, tax_audit
         ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
     ]))
 
-    story.append(table)
+    story.append(make_box("Fee Structure", [table]))
+    story.append(Spacer(1, 6))
 
-    story.append(Spacer(1, 12))
-
-    # 🔥 COMPARISON
-    story.append(Paragraph("Cost Comparison", heading_style))
-
+    # -------------------------
+    # BLOCK 4: COST COMPARISON
+    # -------------------------
     three_year_cost = one_year_total * 3
     per_year = int(offer / 3)
     savings = three_year_cost - offer
@@ -230,20 +291,22 @@ def generate_pdf_bytes(client_name, entity_type, plan, renewal, offer, tax_audit
         ["🔥 You Save", f"{savings:,}"]
     ]
 
-    comp_table = Table(comp_data, colWidths=[300, 150])
+    comp_table = Table(comp_data, colWidths=[293, 180])
 
     comp_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.black),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTSIZE', (0, 0), (-1, -1), 9.5),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
 
         ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor("#bbf7d0")),
         ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
     ]))
 
-    story.append(comp_table)
-
-    story.append(Spacer(1, 10))
+    story.append(make_box("Cost Comparison", [comp_table], bar_color="#111827"))
+    story.append(Spacer(1, 6))
 
     # CLOSING
     story.append(Paragraph("We assure you of timely and accurate compliance support.", normal_style))
