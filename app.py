@@ -40,6 +40,8 @@ def format_inr(x):
     try:
         return f"₹{int(x):,}"
     except:
+        if isinstance(x, str) and x.strip().upper() == "NIL":
+            return "NIL"
         return "₹0"
 
 # -------------------------
@@ -150,7 +152,7 @@ def generate_pdf_bytes(client_name, entity_type, plan, renewal, offer, tax_audit
     story.append(Spacer(1, 2))
 
     story.append(Paragraph(
-        "As discussed, please find below the proposal for annual statutory compliances for FY 2025–2026.",
+        "As discussed, please find below the proposal for annual statutory compliances for FY 2026–2027.",
         normal_style
     ))
 
@@ -366,9 +368,9 @@ if client_code:
 
         c1.markdown(card("Client Code", row['ClientCode']), unsafe_allow_html=True)
         c2.markdown(card("Company", company), unsafe_allow_html=True)
-        c3.markdown(card("Entity", row['Co Type']), unsafe_allow_html=True)
-        c4.markdown(card("Turnover 23-24", format_inr(row.get('Turn over 23-24',0))), unsafe_allow_html=True)
-        c5.markdown(card("Turnover 24-25", format_inr(row.get('Turn over 24-25',0))), unsafe_allow_html=True)
+        c3.markdown(card("Entity", row.get('Company Type', '')), unsafe_allow_html=True)
+        c4.markdown(card("Turnover 24-25", format_inr(row.get('Turn over 24-25',0))), unsafe_allow_html=True)
+        c5.markdown(card("Turnover 25-26", format_inr(row.get('Turn over 25-26',0))), unsafe_allow_html=True)
 
         # -------------------------
         # FEE SUMMARY
@@ -377,9 +379,9 @@ if client_code:
 
         c1, c2, c3 = st.columns(3)
 
-        c1.markdown(card("FY 23-24", format_inr(row.get("Fee 23-24",0))), unsafe_allow_html=True)
-        c2.markdown(card("FY 24-25", format_inr(row.get("Fee 24-25",0))), unsafe_allow_html=True)
-        c3.markdown(card("Current Total", format_inr(row.get("Total",0))), unsafe_allow_html=True)
+        c1.markdown(card("FY 24-25", format_inr(row.get("Fee 24-25",0))), unsafe_allow_html=True)
+        c2.markdown(card("FY 25-26", format_inr(row.get("Fee 25-26",0))), unsafe_allow_html=True)
+        c3.markdown(card("Tax Audit (Previous)", format_inr(row.get("Tax Audit",0))), unsafe_allow_html=True)
 
         # -------------------------
         # RENEWAL + TAX AUDIT FIX
@@ -393,7 +395,7 @@ if client_code:
             if "offer" in col.lower():
                 offer = row[col]
 
-        tax_audit_2526 = row.get("Tax Audit 25-26", 0)
+        tax_audit_2627 = row.get("Tax Audit 26-27", 0)
 
         st.subheader("🚀 Renewal Pricing")
 
@@ -416,8 +418,8 @@ if client_code:
         # 🔥 NEW (Tax Audit in renewal section)
         c3.markdown(f"""
 <div class="card" style="background:#f59e0b;color:white;">
-    <div class="label" style="color:white;">Tax Audit 25-26</div>
-    <div class="value">{format_inr(tax_audit_2526)}</div>
+    <div class="label" style="color:white;">Tax Audit 26-27</div>
+    <div class="value">{format_inr(tax_audit_2627)}</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -431,21 +433,21 @@ if client_code:
         with col1:
             pdf1 = generate_pdf_bytes(
     company,
-    row.get("Co Type", ""),
+    row.get("Company Type", ""),
     "1 Year Plan",
     renewal,
     offer,
-    tax_audit_2526
+    tax_audit_2627
 )
             st.download_button("⬇️ 1 Year Proposal", pdf1, "proposal_1_year.pdf")
 
         with col2:
             pdf2 = generate_pdf_bytes(
     company,
-    row.get("Co Type", ""),
+    row.get("Company Type", ""),
     "2+1 Offer",
     renewal,
     offer,
-    tax_audit_2526
+    tax_audit_2627
 )	
             st.download_button("⬇️ 2+1 Proposal", pdf2, "proposal_2plus1.pdf")
